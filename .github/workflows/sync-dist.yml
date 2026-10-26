@@ -1,0 +1,22 @@
+name: sync-dist
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * 1" # Mondays 09:17 UTC — mirror the upstream build
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch dist/index.html from Palm-Health-Tech/monster-quest@main (public repo, no token needed)
+        run: |
+          curl -fsSL "https://api.github.com/repos/Palm-Health-Tech/monster-quest/contents/web/monster-quest-3d/dist/index.html?ref=main" \
+            -H "Accept: application/vnd.github.raw" -o index.html
+      - name: Commit if changed
+        run: |
+          git config user.name "studio-sync"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then echo "up to date"; else git commit -m "sync dist from monster-quest@main"; git push; fi
