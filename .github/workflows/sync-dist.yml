@@ -10,10 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch dist/index.html from Palm-Health-Tech/monster-quest@main (public repo, no token needed)
+      - name: Fetch dist/index.html from Palm-Health-Tech/monster-quest@main
+        env:
+          DIST_PAT: ${{ secrets.DIST_PAT }} # fine-grained PAT: contents:read on monster-quest (the source repo is PRIVATE since 2026-10-27; without it this job skips)
         run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/Palm-Health-Tech/monster-quest)
+          if [ -z "$DIST_PAT" ] && [ "$code" = "404" ]; then
+            echo "::notice::source repo is private and secrets.DIST_PAT is not set - add a fine-grained PAT (contents:read on monster-quest) as the DIST_PAT secret to enable auto-sync"
+            exit 0
+          fi
+          AUTH=()
+          if [ -n "$DIST_PAT" ]; then AUTH=(-H "Authorization: Bearer $DIST_PAT"); fi
           curl -fsSL "https://api.github.com/repos/Palm-Health-Tech/monster-quest/contents/web/monster-quest-3d/dist/index.html?ref=main" \
-            -H "Accept: application/vnd.github.raw" -o index.html
+            -H "Accept: application/vnd.github.raw" "${AUTH[@]}" -o index.html
       - name: Commit if changed
         run: |
           git config user.name "studio-sync"
